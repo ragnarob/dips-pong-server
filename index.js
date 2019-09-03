@@ -16,8 +16,8 @@ new PlayerApi(app, databaseFacade)
 
 // import testIt from './tests/oneBigTester.js'
 // testIt()
-
-// app.get('*', (req, res) => res.sendFile('index.html', {root: '../dips-pong-client/public'}))
+app.use(express.static('./public'))
+app.get('*', (req, res) => res.sendFile('index.html', {root: './public'}))
 
 app.listen(8081)
 console.log('magic happning ')
