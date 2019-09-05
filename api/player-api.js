@@ -20,8 +20,8 @@ module.exports = class PlayerApi {
       res.json(playerStats)
     })
 
-    this.app.post('/api/player/:name', async (req, res) => {
-      await this.updatePlayerStats(req.params.name, req.body.playerName)
+    this.app.post('/api/player/:id', async (req, res) => {
+      await this.updatePlayerStats(req.params.id, req.body.newPlayerName)
       res.json({success: true})
     })
 
@@ -46,7 +46,7 @@ module.exports = class PlayerApi {
     let playerQuery = 'SELECT id, elo FROM player WHERE name = ?'
     let playerQueryParams = [playerName]
 
-    let matchesQuery = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) WHERE (player.name = ? OR losingjoin.name = ?)'
+    let matchesQuery = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange, game.winnerelo AS winnerElo, game.loserelo AS loserElo FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) WHERE (player.name = ? OR losingjoin.name = ?) ORDER BY timestamp DESC'
     let matchesQueryParams = [playerName, playerName]
     let [playerResult, matchesResult] = await Promise.all([
       this.databaseFacade.execute(playerQuery, playerQueryParams),
@@ -65,9 +65,9 @@ module.exports = class PlayerApi {
     }
   }
 
-  async updatePlayerStats (playerName, newPlayerName) {
-    let query = 'UPDATE player SET name = ? WHERE name = ?'
-    let queryParams = [newPlayerName, playerName]
+  async updatePlayerStats (playerId, newPlayerName) {
+    let query = 'UPDATE player SET name = ? WHERE id = ?'
+    let queryParams = [newPlayerName, playerId]
     await this.databaseFacade.execute(query, queryParams)
   }
 

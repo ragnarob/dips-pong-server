@@ -32,7 +32,7 @@ module.exports = class GameApi {
   }
 
   async getAllGames () {
-    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser)'
+    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) ORDER BY timestamp DESC'
 
     let games = await this.databaseFacade.execute(query)
     return games
@@ -115,7 +115,17 @@ module.exports = class GameApi {
   }
 
   calculateEloChanges (winnerElo, loserElo) {
-    // bla bla
-    return  {newWinnerElo: 33, winnerEloChange: 3, newLoserElo: 44, loserEloChange: -33}
+    const k = 42
+
+    let P1 = (1.0 / (1.0 + 10**((winnerElo - loserElo) / 400)))
+    let P2 = (1.0 / (1.0 + 10**((loserElo - winnerElo) / 400)))
+
+    let ratingTransferred = k*(P1)
+
+    let newWinnerElo = winnerElo + ratingTransferred
+    let newLoserElo = loserElo - ratingTransferred
+
+    return  {newWinnerElo: newWinnerElo, winnerEloChange: newWinnerElo-winnerElo,
+             newLoserElo: newLoserElo, loserEloChange: newLoserElo-loserElo}
   }
 }
