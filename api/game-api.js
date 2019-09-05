@@ -26,13 +26,13 @@ module.exports = class GameApi {
     })
 
     this.app.delete('/api/games/:id', async (req, res) => {
-      await this.deleteGame(req.params.id)
-      res.json({success: true})
+      let result = await this.deleteGame(req.params.id)
+      res.json(result)
     })
   }
 
   async getAllGames () {
-    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) ORDER BY timestamp DESC'
+    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelo AS winnerElo, game.loserelo AS loserElo, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) ORDER BY timestamp DESC'
 
     let games = await this.databaseFacade.execute(query)
     return games
@@ -80,13 +80,14 @@ module.exports = class GameApi {
   }
 
   async deleteGame (gameId) {
+    gameId = Number(gameId)
     let gameDetailsQuery = 'SELECT winner, loser, winnerelo, loserelo, timestamp FROM game WHERE id = ?'
     let gameDetailsQueryParams = [gameId]
 
     let gameDetails = await this.databaseFacade.execute(gameDetailsQuery, gameDetailsQueryParams)
     gameDetails = gameDetails[0]
 
-    let playerHistoryQuery = 'SELECT id FROM game WHERE winner = ? OR loser = ? ORDER BY timestamp LIMIT 1'
+    let playerHistoryQuery = 'SELECT id FROM game WHERE winner = ? OR loser = ? ORDER BY timestamp DESC LIMIT 1'
     let playerHistoryQueryParamsWin = [gameDetails.winner, gameDetails.winner]
     let playerHistoryQueryParamsLose = [gameDetails.loser, gameDetails.loser]
 
@@ -94,16 +95,15 @@ module.exports = class GameApi {
       this.databaseFacade.execute(playerHistoryQuery, playerHistoryQueryParamsWin),
       this.databaseFacade.execute(playerHistoryQuery, playerHistoryQueryParamsLose),
     ])
-
-    if (winnerMostRecentGame[0].id !== gameDetails.winner || loserMostRecentGame[0].id !== gameDetails.loser) {
+    if (winnerMostRecentGame[0].id !== gameId || loserMostRecentGame[0].id !== gameId) {
       return {error: 'One of the players has played a game more recent than this. Game cannot be deleted.'}
     }
    
     let deleteGameQuery = 'DELETE FROM game WHERE id = ?'
     let deleteGameQueryParams = [gameId]
     let updatePlayerQuery = 'UPDATE player SET elo = ? WHERE id = ?'
-    let updatePlayerQueryParamsWin = [gameDetails.winnerElo, gameDetails.winner]
-    let updatePlayerQueryParamsLose = [gameDetails.loserElo, gameDetails.loser]
+    let updatePlayerQueryParamsWin = [gameDetails.winnerelo, gameDetails.winner]
+    let updatePlayerQueryParamsLose = [gameDetails.loserelo, gameDetails.loser]
 
     await Promise.all([
       this.databaseFacade.execute(deleteGameQuery, deleteGameQueryParams),
