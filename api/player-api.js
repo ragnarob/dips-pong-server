@@ -21,7 +21,7 @@ module.exports = class PlayerApi {
     })
 
     this.app.post('/api/player/:id', async (req, res) => {
-      await this.updatePlayerStats(req.params.id, req.body.newPlayerName)
+      await this.renamePlayer(req.params.id, req.body.newPlayerName)
       res.json({success: true})
     })
 
@@ -65,13 +65,21 @@ module.exports = class PlayerApi {
     }
   }
 
-  async updatePlayerStats (playerId, newPlayerName) {
+  async renamePlayer (playerId, newPlayerName) {
+    if (!this.isValidName(newPlayerName)) {
+      return {error: 'Invalid player name'}
+    }
+
     let query = 'UPDATE player SET name = ? WHERE id = ?'
     let queryParams = [newPlayerName, playerId]
     await this.databaseFacade.execute(query, queryParams)
   }
 
   async addPlayer (playerName) {
+    if (!this.isValidName(playerName)) {
+      return {error: 'Invalid player name'}
+    }
+
     let query = 'INSERT INTO player (name) VALUES (?)'
     let queryParams = [playerName]
 
@@ -84,5 +92,11 @@ module.exports = class PlayerApi {
     let query = 'DELETE FROM player WHERE name = ?'
     let queryParams = [playerName]
     await this.databaseFacade.execute(query, queryParams)
+  }
+
+  isValidName (name) {
+    return name.length > 1 
+      && name.length < 25
+      && /^[\wÆØÅæøå\s]+$/i.test(name)
   }
 }
