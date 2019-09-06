@@ -38,6 +38,6 @@ module.exports = class MiscApi {
     }
 
     let topThree = streakList.sort((p1, p2) => p1.streak>p2.streak ? -1 : 1)
-    return topThree.slice(0, 3).filter(t => t.streak > 0)
+    return topThree.slice(0, 3).filter(t => t.streak > 1)
   }
 }

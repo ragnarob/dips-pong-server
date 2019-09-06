@@ -115,7 +115,7 @@ module.exports = class GameApi {
   }
 
   calculateEloChanges (winnerElo, loserElo) {
-    const k = 42
+    const k = 32
 
     let P1 = (1.0 / (1.0 + 10**((winnerElo - loserElo) / 400)))
     let P2 = (1.0 / (1.0 + 10**((loserElo - winnerElo) / 400)))
