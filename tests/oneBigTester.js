@@ -31,7 +31,7 @@ module.exports = async function test () {
   console.log('--------------------------------------\n\n')
 
   console.log('Updating player "asd" to "qwe"')
-  await playerApi.updatePlayerStats('asd', 'qwe')
+  await playerApi.renamePlayer('asd', 'qwe')
   console.log(await playerApi.getPlayerStats('qwe'))
 
   console.log('--------------------------------------\n\n')
