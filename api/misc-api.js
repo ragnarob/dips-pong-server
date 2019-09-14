@@ -51,16 +51,29 @@ module.exports = class MiscApi {
     let allGames = await this.gameApi.getAllGames()
     let allPlayers = await this.playerApi.getAllPlayers()
 
+    let lastGameOfPlayers = {}
     let ratingStatsData = []
     let nowTime = new Date().getTime()
 
     for (var player of allPlayers) {
       ratingStatsData.push({name: player.name, data: [[nowTime, player.elo]]})
+      lastGameOfPlayers[player.name] = {finalElo: undefined, time: 0}
     }
     for (var game of allGames) {
       var gameTime = new Date(game.timestamp).getTime()
       ratingStatsData.find(s => s.name === game.winningPlayer).data.push([gameTime, game.winnerElo])
       ratingStatsData.find(s => s.name === game.losingPlayer).data.push([gameTime, game.loserElo])
+
+      if (gameTime > lastGameOfPlayers[game.winningPlayer].time) {
+        lastGameOfPlayers[game.winningPlayer] = {time: gameTime, finalElo: game.winnerElo + game.winnerEloChange}
+      }
+      if (gameTime > lastGameOfPlayers[game.losingPlayer].time) {
+        lastGameOfPlayers[game.losingPlayer] = {time: gameTime, finalElo: game.loserElo + game.loserEloChange}
+      }
+    }
+
+    for (var playerStats of ratingStatsData) {
+      playerStats.data.push([lastGameOfPlayers[playerStats.name].time, lastGameOfPlayers[playerStats.name].finalElo])
     }
 
     return ratingStatsData
