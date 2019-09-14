@@ -48,22 +48,21 @@ module.exports = class MiscApi {
   }
 
   async getRatingStats () {
-    let getRatingsQuery = 'SELECT player.name AS name, playerrating.elo AS elo, timestamp FROM playerrating INNER JOIN player ON (playerrating.player = player.id) ORDER BY timestamp ASC'
-    let ratings = await this.databaseFacade.execute(getRatingsQuery)
+    let allGames = await this.gameApi.getAllGames()
+    let allPlayers = await this.playerApi.getAllPlayers()
 
-    let ratingsByPlayerName = []
+    let ratingStatsData = []
+    let nowTime = new Date().getTime()
 
-    for (const rating of ratings) {
-      let playerRatings = ratingsByPlayerName.find(r => r.name === rating.name)
-
-      if (!playerRatings) {
-        ratingsByPlayerName.push({name: rating.name, ratings: []})
-        playerRatings = ratingsByPlayerName.find(r => r.name === rating.name)
-      }
-
-      playerRatings.ratings.push({elo: rating.elo, timestamp: rating.timestamp})
+    for (var player of allPlayers) {
+      ratingStatsData.push({name: player.name, data: [[nowTime, player.elo]]})
+    }
+    for (var game of allGames) {
+      var gameTime = new Date(game.timestamp).getTime()
+      ratingStatsData.find(s => s.name === game.winningPlayer).data.push([gameTime, game.winnerElo])
+      ratingStatsData.find(s => s.name === game.losingPlayer).data.push([gameTime, game.loserElo])
     }
 
-    return ratingsByPlayerName
+    return ratingStatsData
   }
 }
