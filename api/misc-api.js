@@ -48,32 +48,34 @@ module.exports = class MiscApi {
   }
 
   async getRatingStats () {
-    let allGames = await this.gameApi.getAllGames()
+    let allGames = (await this.gameApi.getAllGames()).reverse()
     let allPlayers = await this.playerApi.getAllPlayers()
 
-    let lastGameOfPlayers = {}
     let ratingStatsData = []
-    let nowTime = new Date().getTime()
 
     for (var player of allPlayers) {
-      ratingStatsData.push({name: player.name, data: [[nowTime, player.elo]]})
-      lastGameOfPlayers[player.name] = {finalElo: undefined, time: 0}
+      ratingStatsData.push({name: player.name, data: [[undefined, 1200]]})
     }
+
     for (var game of allGames) {
-      var gameTime = new Date(game.timestamp).getTime()
-      ratingStatsData.find(s => s.name === game.winningPlayer).data.push([gameTime, game.winnerElo])
-      ratingStatsData.find(s => s.name === game.losingPlayer).data.push([gameTime, game.loserElo])
+      let gameTime = new Date(game.timestamp).getTime()
+      let winningPlayerStats = ratingStatsData.find(s => s.name === game.winningPlayer)
+      let losingPlayerStats = ratingStatsData.find(s => s.name === game.losingPlayer)
 
-      if (gameTime > lastGameOfPlayers[game.winningPlayer].time) {
-        lastGameOfPlayers[game.winningPlayer] = {time: gameTime, finalElo: game.winnerElo + game.winnerEloChange}
+      if (losingPlayerStats.data.length === 1) {
+        losingPlayerStats.data[0][0] = gameTime - 3600000
       }
-      if (gameTime > lastGameOfPlayers[game.losingPlayer].time) {
-        lastGameOfPlayers[game.losingPlayer] = {time: gameTime, finalElo: game.loserElo + game.loserEloChange}
+      if (winningPlayerStats.data.length === 1) {
+        winningPlayerStats.data[0][0] = gameTime - 3600000
       }
+
+      winningPlayerStats.data.push([gameTime, game.winnerElo + game.winnerEloChange])
+      losingPlayerStats.data.push([gameTime, game.loserElo + game.loserEloChange])
     }
 
-    for (var playerStats of ratingStatsData) {
-      playerStats.data.push([lastGameOfPlayers[playerStats.name].time, lastGameOfPlayers[playerStats.name].finalElo])
+    let nowTime = new Date().getTime()
+    for (var player of allPlayers) {
+      ratingStatsData.find(s => s.name === player.name).data.push([nowTime, player.elo])
     }
 
     return ratingStatsData
