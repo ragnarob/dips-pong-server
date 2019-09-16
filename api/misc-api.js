@@ -74,10 +74,16 @@ module.exports = class MiscApi {
     }
 
     let nowTime = new Date().getTime()
+    let finalPlayerStats = []
+
     for (var player of allPlayers) {
-      ratingStatsData.find(s => s.name === player.name).data.push([nowTime, player.elo])
+      let playerStats = ratingStatsData.find(s => s.name === player.name)
+      if (playerStats.data.length > 1) {
+        playerStats.data.push([nowTime, player.elo])
+        finalPlayerStats.push(playerStats)
+      }
     }
 
-    return ratingStatsData
+    return finalPlayerStats
   }
 }
