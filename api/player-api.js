@@ -69,6 +69,8 @@ module.exports = class PlayerApi {
   }
 
   async renamePlayer (playerId, newPlayerName) {
+    newPlayerName = newPlayerName.trim()
+
     if (!this.isValidName(newPlayerName)) {
       return {error: 'Invalid player name'}
     }
@@ -79,6 +81,8 @@ module.exports = class PlayerApi {
   }
 
   async addPlayer (playerName) {
+    playerName = playerName.trim()
+
     if (!this.isValidName(playerName)) {
       return {error: 'Invalid player name'}
     }
