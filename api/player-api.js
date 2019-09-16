@@ -56,7 +56,10 @@ module.exports = class PlayerApi {
     if (playerResult.length === 0) {
       return {error: 'No player with name ' + playerName}
     }
-
+    for (const match of matchesResult) {
+      match.winningPlayer = match.winningPlayer.trim()
+      match.losingPlayer = match.losingPlayer.trim()
+    }
     return {
       name: playerName,
       id: playerResult[0].id,
