@@ -10,8 +10,8 @@ module.exports = class GameApi {
   }
 
   setupRoutes () {
-    this.app.get('/api/games', async (req, res) => {
-      let allGames = await this.getAllGames()
+    this.app.get('/api/games', this.hasOfficeIdInQuery, async (req, res) => {
+      let allGames = await this.getAllGames(req.query.officeId)
       res.json(allGames)
     })
 
@@ -20,8 +20,8 @@ module.exports = class GameApi {
       res.json(game)
     })
 
-    this.app.post('/api/games', async (req, res) => {
-      await this.addGame(req.body.winnerId, req.body.loserId)
+    this.app.post('/api/games', this.hasOfficeIdInBody, async (req, res) => {
+      await this.addGame(req.body.officeId, req.body.winnerId, req.body.loserId)
       res.json({success: true})
     })
 
@@ -31,15 +31,15 @@ module.exports = class GameApi {
     })
   }
 
-  async getAllGames () {
-    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelo AS winnerElo, game.loserelo AS loserElo, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) ORDER BY timestamp DESC'
+  async getAllGames (officeId) {
+    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelo AS winnerElo, game.loserelo AS loserElo, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) WHERE game.office = ? ORDER BY timestamp DESC'
 
-    let games = await this.databaseFacade.execute(query)
+    let games = await this.databaseFacade.execute(query, [officeId])
     return games
   }
 
   async getSingleGame (gameId) {
-    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) WHERE game.id = ?'
+    let query = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange, game.office AS office FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) WHERE game.id = ?'
     let queryParams = [gameId]
 
     let gameResult = await this.databaseFacade.execute(query, queryParams)
@@ -49,12 +49,12 @@ module.exports = class GameApi {
     return gameResult[0]
   }
 
-  async addGame (winnerId, loserId) {
-    let eloQuery = 'SELECT elo FROM player WHERE id = ?'
+  async addGame (officeId, winnerId, loserId) {
+    let eloQuery = 'SELECT elo FROM player WHERE id = ? AND office = ?'
 
-    let winnerElo = await this.databaseFacade.execute(eloQuery, [winnerId])
+    let winnerElo = await this.databaseFacade.execute(eloQuery, [winnerId, officeId])
     winnerElo = winnerElo[0].elo
-    let loserElo = await this.databaseFacade.execute(eloQuery, [loserId])
+    let loserElo = await this.databaseFacade.execute(eloQuery, [loserId, officeId])
     loserElo = loserElo[0].elo
 
     let newData = this.calculateEloChanges(winnerElo, loserElo)
@@ -63,8 +63,8 @@ module.exports = class GameApi {
     let newLoserElo = newData.newLoserElo
     let loserEloChange = newData.loserEloChange
 
-    let addGameQuery = 'INSERT INTO game (winner, loser, winnerelo, loserelo, winnerelochange, loserelochange) VALUES (?, ?, ?, ?, ?, ?)'
-    let addGameQueryParams = [winnerId, loserId, winnerElo, loserElo, winnerEloChange, loserEloChange]
+    let addGameQuery = 'INSERT INTO game (winner, loser, winnerelo, loserelo, winnerelochange, loserelochange, office) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    let addGameQueryParams = [winnerId, loserId, winnerElo, loserElo, winnerEloChange, loserEloChange, officeId]
 
     let updatePlayerQuery = 'UPDATE player SET elo = ? WHERE id = ?'
     let updatePlayerQueryParamsWin = [newWinnerElo, winnerId]
@@ -127,5 +127,23 @@ module.exports = class GameApi {
 
     return  {newWinnerElo: newWinnerElo, winnerEloChange: newWinnerElo-winnerElo,
              newLoserElo: newLoserElo, loserEloChange: newLoserElo-loserElo}
+  }
+
+  hasOfficeIdInQuery (req, res, next) {
+    if (!req.query || !req.query.officeId) {
+      res.json({error: 'Missing query parameter officeId'})
+    }
+    else {
+      next()
+    }
+  }
+
+  hasOfficeIdInBody (req, res, next) {
+    if (!req.body || !req.body.officeId) {
+      res.json({error: 'Missing officeId in request body'})
+    }
+    else {
+      next()
+    }
   }
 }

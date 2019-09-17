@@ -12,23 +12,43 @@ module.exports = class MiscApi {
 
   setupRoutes () {
     this.app.get('/api/hotstreaks', async (req, res) => {
-
-      let streaks = await this.getHotStreaks()
+      if (!req.query || !req.query.officeId) {
+        res.json({error: 'Missing query parameter officeId'})
+      }
+      let streaks = await this.getHotStreaks(req.query.officeId)
       res.json(streaks)
     })
 
     this.app.get('/api/ratingstats', async (req, res) => {
-      let stats = await this.getRatingStats()
+      if (!req.query || !req.query.officeId) {
+        res.json({error: 'Missing query parameter officeId'})
+      }
+      let stats = await this.getRatingStats(req.query.officeId)
       res.json(stats)
+    })
+
+    this.app.get('/api/offices', async (req, res) => {
+      let offices = await this.getOffices()
+      res.json(offices)
+    })
+
+    this.app.post('/api/offices', async (req, res) => {
+      let result = await this.addOffice(req.body.officeName, req.body.slackBotUrl)
+      res.json(result)
+    })
+
+    this.app.post('/api/offices/:id', async (req, res) => {
+      let result = await this.updateOffice(req.params.id, req.body.officeName, req.body.slackBotUrl)
+      res.json(result)
     })
   }
 
-  async getHotStreaks () {
-    let allPlayers = await this.playerApi.getAllPlayers()
+  async getHotStreaks (officeId) {
+    let allPlayers = await this.playerApi.getAllPlayers(officeId)
     let streakList = []
 
     for (const player of allPlayers) {
-      let playerStats = await this.playerApi.getPlayerStats(player.name)
+      let playerStats = await this.playerApi.getPlayerStats(officeId, player.name)
 
       let streak = 0
       for (const game of playerStats.matches) {
@@ -47,9 +67,9 @@ module.exports = class MiscApi {
     return topThree.slice(0, 3).filter(t => t.streak > 1)
   }
 
-  async getRatingStats () {
-    let allGames = (await this.gameApi.getAllGames()).reverse()
-    let allPlayers = await this.playerApi.getAllPlayers()
+  async getRatingStats (officeId) {
+    let allGames = (await this.gameApi.getAllGames(officeId)).reverse()
+    let allPlayers = await this.playerApi.getAllPlayers(officeId)
 
     let ratingStatsData = []
 
@@ -85,5 +105,27 @@ module.exports = class MiscApi {
     }
 
     return finalPlayerStats
+  }
+
+  async getOffices () {
+    let query = 'SELECT name, id FROM office'
+    let offices = await this.databaseFacade.execute(query)
+    return offices
+  }
+
+  async addOffice (officeName, slackBotUrl) {
+    officeName = officeName.trim()
+    let query = 'INSERT INTO office (name) VALUES (?)'
+    await this.databaseFacade.execute(query, [officeName])
+    return (await this.getOffices()).find(o => o.name === officeName)
+  }
+
+  async updateOffice (officeId, newOfficeName, newSlackBotUrl) {
+    newOfficeName = newOfficeName.trim()
+
+    let query = 'UPDATE office SET name = ? WHERE id = ?'
+    let queryParams = [newOfficeName, Number(officeId)]
+    await this.databaseFacade.execute(query, queryParams)
+    return (await this.getOffices()).find(o => o.name === newOfficeName)
   }
 }
