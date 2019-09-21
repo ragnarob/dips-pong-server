@@ -37,7 +37,7 @@ module.exports = class PlayerApi {
   }
 
   async getAllPlayers (officeId) {
-    let query = 'SELECT player.id AS id, player.name AS name, elo, office.id AS officeId, office.name AS officeName FROM player INNER JOIN office ON (player.office = office.id) WHERE office = ? ORDER BY elo DESC'
+    let query = 'SELECT player.id AS id, player.name AS name, elo, office.id AS officeId, office.name AS officeName, COUNT(*) AS gamesCount FROM player INNER JOIN office ON (player.office = office.id) LEFT JOIN game ON (game.winner = player.id OR game.loser = player.id) WHERE player.office = ? GROUP BY player.id ORDER BY elo DESC'
     let allPlayers = await this.databaseFacade.execute(query, [officeId])
     return allPlayers
   }
