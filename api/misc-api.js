@@ -120,16 +120,24 @@ module.exports = class MiscApi {
     let finalRivalries = []
     rivalryList.sort((r1, r2) => r1.score > r2.score ? -1 : 1)
 
-    for (let i=0; i<rivalryList.length; i+=2) {
-      let playerIsLeading = rivalryList[i].results.win >= rivalryList[i].results.lose
+    for (let rivalry of rivalryList) {
+      if (isRivalryAlreadyFound(rivalry.player, rivalry.opponent)) {
+        continue
+      }
+      
+      let playerIsLeading = rivalry.results.win >= rivalry.results.lose
       finalRivalries.push({
-        'p1': playerIsLeading ? rivalryList[i].player : rivalryList[i].opponent,
-        'p2': playerIsLeading ? rivalryList[i].opponent : rivalryList[i].player,
-        'games': [rivalryList[i].results.win, rivalryList[i].results.lose]
+        'p1': playerIsLeading ? rivalry.player : rivalry.opponent,
+        'p2': playerIsLeading ? rivalry.opponent : rivalry.player,
+        'games': [rivalry.results.win, rivalry.results.lose]
       })
     }
 
-    return finalRivalries
+    function isRivalryAlreadyFound(p1, p2) {
+      return finalRivalries.some(r => r.p1===p1 && r.p2===p2 || r.p1===p2 && r.p2===p1)
+    }
+
+    return finalRivalries.slice(0, 3)
   }
 
   async getRatingStats (officeId) {
