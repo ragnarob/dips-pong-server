@@ -129,7 +129,10 @@ module.exports = class MiscApi {
       finalRivalries.push({
         'p1': playerIsLeading ? rivalry.player : rivalry.opponent,
         'p2': playerIsLeading ? rivalry.opponent : rivalry.player,
-        'games': [rivalry.results.win, rivalry.results.lose]
+        'games': [
+          playerIsLeading ? rivalry.results.win : rivalry.results.lose,
+          playerIsLeading ? rivalry.result.lose : rivalry.result.win
+        ]
       })
     }
 
