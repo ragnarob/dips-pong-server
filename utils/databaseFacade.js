@@ -1,10 +1,8 @@
 const mysql = require('mysql')
-const databaseSettings = require('../config/database-settings.json')
+const databaseSettings = require('../config/settings.json').databaseSettings
 
-module.exports = class DatabaseFacade {
-  constructor () {
-    this.mysqlPool = mysql.createPool(databaseSettings)
-	}
+module.exports = {
+  mysqlPool: mysql.createPool(databaseSettings),
 
 	async execute (queryString, queryParams) {
 		return new Promise (async (resolve, reject) => {

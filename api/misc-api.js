@@ -1,5 +1,9 @@
+const databaseFacade = require('../utils/databaseFacade')
+const authorize = require('../middleware/authorize')
+const authApi = require('./auth-api')
+
 module.exports = class MiscApi {
-  constructor (app, databaseFacade, gameApi, playerApi) {
+  constructor (app, gameApi, playerApi) {
     this.app = app
     this.databaseFacade = databaseFacade
     this.gameApi = gameApi
@@ -33,12 +37,12 @@ module.exports = class MiscApi {
     })
 
     this.app.post('/api/offices', async (req, res) => {
-      let result = await this.addOffice(req.body.officeName, req.body.slackBotUrl)
+      let result = await this.addOffice(req.body.officeName, req.body.officePassword, req.body.passwordHint, req.body.slackBotUrl)
       res.json(result)
     })
 
-    this.app.post('/api/offices/:id', async (req, res) => {
-      let result = await this.updateOffice(req.params.id, req.body.officeName, req.body.slackBotUrl)
+    this.app.post('/api/offices/:id', authorize, async (req, res) => {
+      let result = await this.updateOffice(req.params.id, req.body.officeName, req.body.currentPassword, req.body.newPassword, req.body.passwordHint, req.body.slackBotUrl)
       res.json(result)
     })
   }
@@ -184,24 +188,44 @@ module.exports = class MiscApi {
   }
 
   async getOffices () {
-    let query = 'SELECT name, id FROM office'
+    let query = 'SELECT name, id, passwordHint FROM office'
     let offices = await this.databaseFacade.execute(query)
     return offices
   }
 
-  async addOffice (officeName, slackBotUrl) {
-    officeName = officeName.trim()
-    let query = 'INSERT INTO office (name) VALUES (?)'
-    await this.databaseFacade.execute(query, [officeName])
-    return (await this.getOffices()).find(o => o.name === officeName)
+  async addOffice (officeName, officePassword, passwordHint, slackBotUrl) {
+    try {
+      if (officePassword.length < 4) {
+        return {error: 'Password must be at least 4 characters long'}
+      }
+      if (!officeName.length > 1) {
+        return {error: 'League name must be at least 2 characters long'}
+      }
+
+      officeName = officeName.trim()
+      await authApi.signup(officeName, officePassword, passwordHint)
+      return (await this.getOffices()).find(o => o.name === officeName)
+    }
+    catch (err) {
+      console.log(err)
+      return {error: 'Server error'}
+    }
   }
 
-  async updateOffice (officeId, newOfficeName, newSlackBotUrl) {
-    newOfficeName = newOfficeName.trim()
+  async updateOffice (officeId, newOfficeName, password, newPassword, passwordHint, newSlackBotUrl) {
+    try {
+      newOfficeName = newOfficeName.trim()
+      if (!newOfficeName.length > 1) {
+        return {error: 'League name must be at least 2 characters long'}
+      }
+      let res = await authApi.updateOffice(officeId, newOfficeName, password, newPassword, passwordHint)
+      if (res.error) { return res }
 
-    let query = 'UPDATE office SET name = ? WHERE id = ?'
-    let queryParams = [newOfficeName, Number(officeId)]
-    await this.databaseFacade.execute(query, queryParams)
-    return (await this.getOffices()).find(o => o.name === newOfficeName)
+      return (await this.getOffices()).find(o => o.name === newOfficeName)
+    }
+    catch (err) {
+      console.log(err)
+      return {error: 'Server error'}
+    }
   }
 }

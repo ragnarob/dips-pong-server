@@ -1,23 +1,38 @@
-const DatabaseFacade = require('./utils/databaseFacade')
 const GameApi = require('./api/game-api.js')
 const PlayerApi = require('./api/player-api')
 const MiscApi = require('./api/misc-api')
 
+const settings = require('./config/settings.json')
+
 const express = require('express')
 const bodyParser = require('body-parser')
+const cors = require('cors')
 
-const app = express()
+app = express()
+
+let session = require('express-session')
+const redis = require('redis')
+const redisStore = require('connect-redis')(session)
+
+const redisClient = redis.createClient()
+app.use(session({
+  secret: 'de78asdta8dyasdhi2jadajadazuckerbergzuperc00l',
+  name: '_redisPractice',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false },
+  store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 * 1000 * 60 }),
+}));
+
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true}))
+app.use(cors())
 
-const databaseFacade = new DatabaseFacade()
+const gameApi = new GameApi(app)
+const playerApi = new PlayerApi(app)
+require('./api/auth-api').setupRoutes()
+new MiscApi(app, gameApi, playerApi)
 
-const gameApi = new GameApi(app, databaseFacade)
-const playerApi = new PlayerApi(app, databaseFacade)
-new MiscApi(app, databaseFacade, gameApi, playerApi)
-
-// import testIt from './tests/oneBigTester.js'
-// testIt()
 app.use(express.static('./public'))
 app.get('*', (req, res) => res.sendFile('index.html', {root: './public'}))
 

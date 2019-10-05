@@ -1,6 +1,8 @@
+const databaseFacade = require('../utils/databaseFacade')
+const authorize = require('../middleware/authorize')
 
 module.exports = class GameApi {
-  constructor (app, databaseFacade) {
+  constructor (app) {
     this.app = app
     this.databaseFacade = databaseFacade
 
@@ -20,12 +22,12 @@ module.exports = class GameApi {
       res.json(game)
     })
 
-    this.app.post('/api/games', this.hasOfficeIdInBody, async (req, res) => {
+    this.app.post('/api/games', authorize, this.hasOfficeIdInBody, async (req, res) => {
       await this.addGame(req.body.officeId, req.body.winnerId, req.body.loserId)
       res.json({success: true})
     })
 
-    this.app.delete('/api/games/:id', async (req, res) => {
+    this.app.delete('/api/games/:id', authorize, async (req, res) => {
       let result = await this.deleteGame(req.params.id)
       res.json(result)
     })
