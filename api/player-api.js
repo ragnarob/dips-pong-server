@@ -59,10 +59,28 @@ module.exports = class PlayerApi {
       return {error: 'No player with name ' + playerName}
     }
 
+    let opponentsScores = {}
+
     for (const match of matchesResult) {
       match.winningPlayer = match.winningPlayer.trim()
       match.losingPlayer = match.losingPlayer.trim()
+
+      let winGame = match.winningPlayer === playerName
+      let opponent = winGame ? match.losingPlayer : match.winningPlayer
+
+      if (!(opponent in opponentsScores)) {
+        opponentsScores[opponent] = {wins: 0, losses: 0, games: 0, eloSum: 0}
+      }
+
+      opponentsScores[opponent][winGame ? 'wins' : 'losses'] += 1
+      opponentsScores[opponent].games += 1
+      opponentsScores[opponent].eloSum += winGame ? match.winnerEloChange : -match.winnerEloChange
     }
+
+    let opponentsScoresList = Object.keys(opponentsScores).map(opponent => (
+      {name: opponent, wins: opponentsScores[opponent].wins, losses: opponentsScores[opponent].losses, games: opponentsScores[opponent].games, eloSum: opponentsScores[opponent].eloSum}
+    ))
+    opponentsScoresList.sort((o1, o2) => o1.games > o2.games ? -1 : 1)
 
     return {
       name: playerName,
@@ -70,7 +88,8 @@ module.exports = class PlayerApi {
       officeId: playerResult[0].officeId,
       officeName: playerResult[0].officeName,
       elo: playerResult[0].elo,
-      matches: matchesResult
+      matches: matchesResult,
+      opponentScores: opponentsScoresList,
     }
   }
 
