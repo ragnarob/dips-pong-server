@@ -1,6 +1,8 @@
+const databaseFacade = require('../utils/databaseFacade')
+const authorize = require('../middleware/authorize')
 
 module.exports = class PlayerApi {
-  constructor (app, databaseFacade) {
+  constructor (app) {
     this.app = app
     this.databaseFacade = databaseFacade
 
@@ -20,17 +22,17 @@ module.exports = class PlayerApi {
       res.json(playerStats)
     })
 
-    this.app.delete('/api/players/:id', async (req, res) => {
+    this.app.delete('/api/players/:id', authorize,  async (req, res) => {
       await this.deletePlayer(req.params.id)
       res.json({success: true})
     })
 
-    this.app.post('/api/players', this.hasOfficeIdInBody, async (req, res) => {
+    this.app.post('/api/players', authorize, this.hasOfficeIdInBody, async (req, res) => {
       await this.addPlayer(req.body.officeId, req.body.newPlayerName)
       res.json({success: true})
     })
 
-    this.app.post('/api/players/:id', async (req, res) => {
+    this.app.post('/api/players/:id', authorize, async (req, res) => {
       await this.renamePlayer(req.params.id, req.body.newPlayerName)
       res.json({success: true})
     })
@@ -57,10 +59,28 @@ module.exports = class PlayerApi {
       return {error: 'No player with name ' + playerName}
     }
 
+    let opponentsScores = {}
+
     for (const match of matchesResult) {
       match.winningPlayer = match.winningPlayer.trim()
       match.losingPlayer = match.losingPlayer.trim()
+
+      let winGame = match.winningPlayer === playerName
+      let opponent = winGame ? match.losingPlayer : match.winningPlayer
+
+      if (!(opponent in opponentsScores)) {
+        opponentsScores[opponent] = {wins: 0, losses: 0, games: 0, eloSum: 0}
+      }
+
+      opponentsScores[opponent][winGame ? 'wins' : 'losses'] += 1
+      opponentsScores[opponent].games += 1
+      opponentsScores[opponent].eloSum += winGame ? match.winnerEloChange : -match.winnerEloChange
     }
+
+    let opponentsScoresList = Object.keys(opponentsScores).map(opponent => (
+      {name: opponent, wins: opponentsScores[opponent].wins, losses: opponentsScores[opponent].losses, games: opponentsScores[opponent].games, eloSum: opponentsScores[opponent].eloSum}
+    ))
+    opponentsScoresList.sort((o1, o2) => o1.games > o2.games ? -1 : 1)
 
     return {
       name: playerName,
@@ -68,7 +88,8 @@ module.exports = class PlayerApi {
       officeId: playerResult[0].officeId,
       officeName: playerResult[0].officeName,
       elo: playerResult[0].elo,
-      matches: matchesResult
+      matches: matchesResult,
+      opponentScores: opponentsScoresList,
     }
   }
 
