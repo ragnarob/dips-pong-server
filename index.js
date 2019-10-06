@@ -10,7 +10,7 @@ const cors = require('cors')
 
 app = express()
 
-let session = require('express-session')
+const session = require('express-session')
 const redis = require('redis')
 const redisStore = require('connect-redis')(session)
 
