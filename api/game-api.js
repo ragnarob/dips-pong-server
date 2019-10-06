@@ -75,11 +75,11 @@ module.exports = class GameApi {
     let loserElo = await this.databaseFacade.execute(eloQuery, [loserId, officeId])
     loserElo = loserElo[0].elo
 
-    let newData = ratingCalculator['Upset elo'](winnerElo, loserElo)
-    let newWinnerElo = newData.newWinnerElo
-    let winnerEloChange = newData.winnerEloChange
-    let newLoserElo = newData.newLoserElo
-    let loserEloChange = newData.loserEloChange
+    let ratingTransferred = ratingCalculator['Upset elo'](winnerElo, loserElo)
+    let newWinnerElo = winnerElo + ratingTransferred
+    let winnerEloChange = ratingTransferred
+    let newLoserElo = loserElo - ratingTransferred
+    let loserEloChange = ratingTransferred
 
     let addGameQuery = 'INSERT INTO game (winner, loser, winnerelo, loserelo, winnerelochange, loserelochange, office) VALUES (?, ?, ?, ?, ?, ?, ?)'
     let addGameQueryParams = [winnerId, loserId, winnerElo, loserElo, winnerEloChange, loserEloChange, officeId]
@@ -174,7 +174,6 @@ module.exports = class GameApi {
     let allGames = await this.getAllGames(officeId)
     let allRatings = {}
     
-    // gameId, winningPlayer, losingPlayer, winnerElo, loserElo
     for (var game of allGames) {
       if (!(game.winningPlayer in allRatings)) {
         allRatings[game.winningPlayer] = {
