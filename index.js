@@ -21,7 +21,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false },
-  store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 * 1000 * 60 }),
+  store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 * 1000 * 1000 * 1000 * 60 }),
 }));
 
 app.use(bodyParser.json())

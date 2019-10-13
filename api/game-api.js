@@ -85,7 +85,7 @@ module.exports = class GameApi {
     let newWinnerElo = winnerElo + ratingTransferred
     let winnerEloChange = ratingTransferred
     let newLoserElo = loserElo - ratingTransferred
-    let loserEloChange = ratingTransferred
+    let loserEloChange = -ratingTransferred
 
     let addGameQuery = 'INSERT INTO game (winner, loser, winnerelo, loserelo, winnerelochange, loserelochange, office) VALUES (?, ?, ?, ?, ?, ?, ?)'
     let addGameQueryParams = [winnerId, loserId, winnerElo, loserElo, winnerEloChange, loserEloChange, officeId]
