@@ -237,7 +237,7 @@ module.exports = class GameApi {
       let ratingChange = calculate(game.winnerElo, game.loserElo)
       
       allQueries.push('UPDATE game SET winnerelo = ?, loserelo = ?, winnerelochange = ?, loserelochange = ? WHERE id = ?')
-      allQueryParams.push([allRatings[game.winningPlayer].elo, allRatings[game.losingPlayer].elo, ratingChange, ratingChange, game.gameId])
+      allQueryParams.push([allRatings[game.winningPlayer].elo, allRatings[game.losingPlayer].elo, ratingChange, -ratingChange, game.gameId])
 
       allRatings[game.winningPlayer].elo = allRatings[game.winningPlayer].elo + ratingChange
       allRatings[game.winningPlayer].gamesCount += 1
