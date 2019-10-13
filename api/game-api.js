@@ -47,6 +47,11 @@ module.exports = class GameApi {
       let result = await this.testRatingSystem(req.params.ratingSystemName, req.query.officeId)
       res.json(result)
     })
+
+    this.app.get('/api/swapratingsystem/:ratingSystemName', authorize, this.hasOfficeIdInQuery, async (req, res) => {
+      let result = await this.swapRatingSystem(req.params.ratingSystemName, req.query.officeId)
+      res.json(result)
+    })
   }
 
   async getAllGames (officeId) {
@@ -76,6 +81,7 @@ module.exports = class GameApi {
     loserElo = loserElo[0].elo
 
     let ratingTransferred = ratingCalculator['Upset elo'](winnerElo, loserElo)
+
     let newWinnerElo = winnerElo + ratingTransferred
     let winnerEloChange = ratingTransferred
     let newLoserElo = loserElo - ratingTransferred
@@ -196,6 +202,61 @@ module.exports = class GameApi {
     }
     
     let allRatingsList = Object.keys(allRatings).map(key => ({name: key, elo: allRatings[key].elo, gamesCount: allRatings[key].gamesCount}))
+    allRatingsList.sort((x1, x2) => x1.elo > x2.elo ? -1 : 1)
+    return allRatingsList
+  }
+  
+  async swapRatingSystem (ratingSystemName, officeId) {
+    if (!(ratingSystemName in ratingCalculator)) {
+      return {error: 'Invalid name'}
+    }
+    let calculate = ratingCalculator[ratingSystemName]
+
+    let allGames = await this.getAllGames(officeId)
+    allGames.sort((g1, g2) => g1.id > g2.id ? -1 : -1)
+    console.log(allGames)
+    let allRatings = {}
+
+    let allQueries = []
+    let allQueryParams = []
+    
+    for (var game of allGames) {
+      if (!(game.winningPlayer in allRatings)) {
+        allRatings[game.winningPlayer] = {
+          gamesCount: 0,
+          elo: 1200
+        }
+      }
+      if (!(game.losingPlayer in allRatings)) {
+        allRatings[game.losingPlayer] = {
+          gamesCount: 0,
+          elo: 1200
+        }
+      }
+
+      let ratingChange = calculate(game.winnerElo, game.loserElo)
+      
+      allQueries.push('UPDATE game SET winnerelo = ?, loserelo = ?, winnerelochange = ?, loserelochange = ? WHERE id = ?')
+      allQueryParams.push([allRatings[game.winningPlayer].elo, allRatings[game.losingPlayer].elo, ratingChange, ratingChange, game.gameId])
+
+      allRatings[game.winningPlayer].elo = allRatings[game.winningPlayer].elo + ratingChange
+      allRatings[game.winningPlayer].gamesCount += 1
+      allRatings[game.losingPlayer].elo = allRatings[game.losingPlayer].elo - ratingChange
+      allRatings[game.losingPlayer].gamesCount += 1
+    }
+
+    for (var i = 0; i < allQueries.length; i++) {
+      console.log(allQueryParams[i])
+      await databaseFacade.execute(allQueries[i], allQueryParams[i])
+    }
+    
+    let allRatingsList = Object.keys(allRatings).map(key => ({name: key, elo: allRatings[key].elo, gamesCount: allRatings[key].gamesCount}))
+
+    for (var rating of allRatingsList) {
+      console.log(rating.name)
+      await databaseFacade.execute('UPDATE player SET elo = ? WHERE name = ?', [rating.elo, rating.name])
+    }
+
     allRatingsList.sort((x1, x2) => x1.elo > x2.elo ? -1 : 1)
     return allRatingsList
   }
