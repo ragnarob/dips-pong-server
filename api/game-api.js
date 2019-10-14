@@ -80,7 +80,7 @@ module.exports = class GameApi {
     let loserElo = await this.databaseFacade.execute(eloQuery, [loserId, officeId])
     loserElo = loserElo[0].elo
 
-    let ratingTransferred = ratingCalculator['Upset elo'](winnerElo, loserElo)
+    let ratingTransferred = ratingCalculator['SmallUpset elo'](winnerElo, loserElo)
 
     let newWinnerElo = winnerElo + ratingTransferred
     let winnerEloChange = ratingTransferred
