@@ -1,21 +1,12 @@
 const databaseFacade = require('../utils/databaseFacade')
 const authorize = require('../middleware/authorize')
-const authApi = require('./auth-api')
+const gameApi = require('./game-api')
+const playerApi = require('./player-api')
+const officeApi = require('./office-api')
 
-module.exports = class MiscApi {
-  constructor (app, gameApi, playerApi) {
-    this.app = app
-    this.databaseFacade = databaseFacade
-    this.gameApi = gameApi
-    this.playerApi = playerApi
-
-    if (this.app) {
-      this.setupRoutes()
-    }
-  }
-
+module.exports = {
   setupRoutes () {
-    this.app.get('/api/otherStats', async (req, res) => {
+    app.get('/api/otherStats', async (req, res) => {
       if (!req.query || !req.query.officeId) {
         res.json({error: 'Missing query parameter officeId'})
       }
@@ -23,37 +14,22 @@ module.exports = class MiscApi {
       res.json(otherStats)
     })
 
-    this.app.get('/api/ratingstats', async (req, res) => {
+    app.get('/api/ratingstats', async (req, res) => {
       if (!req.query || !req.query.officeId) {
         res.json({error: 'Missing query parameter officeId'})
       }
       let stats = await this.getRatingStats(req.query.officeId)
       res.json(stats)
     })
-
-    this.app.get('/api/offices', async (req, res) => {
-      let offices = await this.getOffices()
-      res.json(offices)
-    })
-
-    this.app.post('/api/offices', async (req, res) => {
-      let result = await this.addOffice(req.body.officeName, req.body.officePassword, req.body.passwordHint, req.body.slackBotUrl)
-      res.json(result)
-    })
-
-    this.app.post('/api/offices/:id', authorize, async (req, res) => {
-      let result = await this.updateOffice(req.params.id, req.body.officeName, req.body.currentPassword, req.body.newPassword, req.body.passwordHint, req.body.slackBotUrl)
-      res.json(result)
-    })
-  }
+  },
 
   async getOtherStats (officeId) {
-    let allPlayers = await this.playerApi.getAllPlayers(officeId)
+    let allPlayers = await playerApi.getAllPlayers(officeId)
     let streakList = []
     let allRivalries = []
 
     for (const player of allPlayers) {
-      let playerStats = await this.playerApi.getPlayerStats(officeId, player.name)
+      let playerStats = await playerApi.getPlayerStats(officeId, player.name)
       let rivalries = {}
       let streakStop = false
       let streak = 0
@@ -82,11 +58,14 @@ module.exports = class MiscApi {
     let topThreeRivalries = this.findTopTotalRivalries(allRivalries)
     let topThreeStreaks = streakList.sort((p1, p2) => p1.streak>p2.streak ? -1 : 1)
 
+    let crossLeagueResults = await officeApi.getOfficeStats(officeId)
+
     return {
-      streaks: topThreeStreaks.slice(0, 3).filter(t => t.streak > 1),
-      rivalries: topThreeRivalries
+      streaks: topThreeStreaks.slice(0, 3).filter(t => t.streak > 2),
+      rivalries: topThreeRivalries,
+      crossLeagueResults: crossLeagueResults
     }
-  }
+  },
 
   getTopRivalries (opponentsMatchList, playerName) {
     let scores = []
@@ -112,13 +91,13 @@ module.exports = class MiscApi {
       })
     )
     return topRivalries
-  }
+  },
 
   calculateRivalryScore (wins, losses) {
     let total = wins + losses
     let diff = Math.abs(wins - losses)
     return total - ((diff + 1) * total) / 5
-  }
+  },
 
   findTopTotalRivalries (rivalryList) {
     let finalRivalries = []
@@ -145,11 +124,12 @@ module.exports = class MiscApi {
     }
 
     return finalRivalries.slice(0, 3)
-  }
+  },
 
   async getRatingStats (officeId) {
-    let allGames = (await this.gameApi.getAllGames(officeId)).reverse()
-    let allPlayers = await this.playerApi.getAllPlayers(officeId)
+    let allGames = await gameApi.getAllGames(officeId)
+    allGames = allGames.reverse()
+    let allPlayers = await playerApi.getAllPlayers(officeId)
 
     let ratingStatsData = []
 
@@ -159,18 +139,31 @@ module.exports = class MiscApi {
 
     for (var game of allGames) {
       let gameTime = new Date(game.timestamp).getTime()
-      let winningPlayerStats = ratingStatsData.find(s => s.name === game.winningPlayer)
-      let losingPlayerStats = ratingStatsData.find(s => s.name === game.losingPlayer)
 
-      if (losingPlayerStats.data.length === 1) {
-        losingPlayerStats.data[0][0] = gameTime - 3600000
-      }
-      if (winningPlayerStats.data.length === 1) {
-        winningPlayerStats.data[0][0] = gameTime - 3600000
+      if (!game.isCrossLeague) {
+        let winningPlayerStats = ratingStatsData.find(s => s.name === game.winningPlayer)
+        let losingPlayerStats = ratingStatsData.find(s => s.name === game.losingPlayer)
+
+        if (losingPlayerStats.data.length === 1) {
+          losingPlayerStats.data[0][0] = gameTime - 3600000
+        }
+        if (winningPlayerStats.data.length === 1) {
+          winningPlayerStats.data[0][0] = gameTime - 3600000
+        }
+
+        winningPlayerStats.data.push([gameTime, game.winnerElo + game.winnerEloChange])
+        losingPlayerStats.data.push([gameTime, game.loserElo + game.loserEloChange])
       }
 
-      winningPlayerStats.data.push([gameTime, game.winnerElo + game.winnerEloChange])
-      losingPlayerStats.data.push([gameTime, game.loserElo + game.loserEloChange])
+      else {
+        let isWinner = ratingStatsData.find(s => s.name === game.winningPlayer) !== undefined
+        let playerStats = ratingStatsData.find(s => s.name === (isWinner ? game.winningPlayer : game.losingPlayer))
+        if (playerStats.data.length === 1) {
+          playerStats.data[0][0] = gameTime - 3600000
+        }
+        let rating = isWinner ? (game.winnerElo + game.winnerEloChange) : (game.loserElo + game.loserEloChange)
+        playerStats.data.push([gameTime, rating])
+      }
     }
 
     let nowTime = new Date().getTime()
@@ -185,47 +178,5 @@ module.exports = class MiscApi {
     }
 
     return finalPlayerStats
-  }
-
-  async getOffices () {
-    let query = 'SELECT name, id, passwordHint FROM office'
-    let offices = await this.databaseFacade.execute(query)
-    return offices
-  }
-
-  async addOffice (officeName, officePassword, passwordHint, slackBotUrl) {
-    try {
-      if (officePassword.length < 4) {
-        return {error: 'Password must be at least 4 characters long'}
-      }
-      if (!officeName.length > 1) {
-        return {error: 'League name must be at least 2 characters long'}
-      }
-
-      officeName = officeName.trim()
-      await authApi.signup(officeName, officePassword, passwordHint)
-      return (await this.getOffices()).find(o => o.name === officeName)
-    }
-    catch (err) {
-      console.log(err)
-      return {error: 'Server error'}
-    }
-  }
-
-  async updateOffice (officeId, newOfficeName, password, newPassword, passwordHint, newSlackBotUrl) {
-    try {
-      newOfficeName = newOfficeName.trim()
-      if (!newOfficeName.length > 1) {
-        return {error: 'League name must be at least 2 characters long'}
-      }
-      let res = await authApi.updateOffice(officeId, newOfficeName, password, newPassword, passwordHint)
-      if (res.error) { return res }
-
-      return (await this.getOffices()).find(o => o.name === newOfficeName)
-    }
-    catch (err) {
-      console.log(err)
-      return {error: 'Server error'}
-    }
-  }
+  },
 }

@@ -20,18 +20,19 @@ app.use(session({
   name: '_redisPractice',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false },
-  store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 * 1000 * 60 }),
+  cookie: { secure: false, maxAge: null },
+  store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 * 1000 * 1000 * 1000 * 60 }),
 }));
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true}))
 app.use(cors())
 
-const gameApi = new GameApi(app)
-const playerApi = new PlayerApi(app)
+require('./api/player-api').setupRoutes()
+require('./api/office-api').setupRoutes()
+require('./api/game-api').setupRoutes()
 require('./api/auth-api').setupRoutes()
-new MiscApi(app, gameApi, playerApi)
+require('./api/misc-api').setupRoutes()
 
 app.use(express.static('./public'))
 app.get('*', (req, res) => res.sendFile('index.html', {root: './public'}))
