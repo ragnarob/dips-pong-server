@@ -20,7 +20,7 @@ app.use(session({
   name: '_redisPractice',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false },
+  cookie: { secure: false, maxAge: null },
   store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 * 1000 * 1000 * 1000 * 60 }),
 }));
 
