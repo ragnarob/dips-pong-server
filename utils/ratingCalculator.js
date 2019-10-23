@@ -6,7 +6,7 @@ module.exports = calculateFunctions = {
 
     let ratingTransferred = Math.round(k*(P1))
     
-    return ratingTransferred
+    return Math.max(1, ratingTransferred)
   },
 
   'SmallUpset elo': function (winnerElo, loserElo) {
@@ -21,7 +21,7 @@ module.exports = calculateFunctions = {
     let diff = loserElo - winnerElo
     let ratingTransferred = Math.round(k - (k)/(1 + t**(diff/a)) + (w * diff**1.91)/(k))
     
-    return ratingTransferred
+    return Math.max(2, ratingTransferred)
   },
 
   'Upset elo': function (winnerElo, loserElo) {
@@ -36,6 +36,6 @@ module.exports = calculateFunctions = {
     let diff = loserElo - winnerElo
     let ratingTransferred = Math.round(k - (k)/(1 + t**(diff/a)) + (w * diff**2)/(k))
     
-    return ratingTransferred
+    return Math.max(2, ratingTransferred)
   },
 }
