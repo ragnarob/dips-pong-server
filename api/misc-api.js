@@ -96,7 +96,7 @@ module.exports = {
   calculateRivalryScore (wins, losses) {
     let total = wins + losses
     let diff = Math.abs(wins - losses)
-    return total - ((diff + 1) * total) / 5
+    return -10*diff/total + total/140
   },
 
   findTopTotalRivalries (rivalryList) {
