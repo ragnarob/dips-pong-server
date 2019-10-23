@@ -21,7 +21,7 @@ module.exports = calculateFunctions = {
     let diff = loserElo - winnerElo
     let ratingTransferred = Math.round(k - (k)/(1 + t**(diff/a)) + (w * diff**1.91)/(k))
     
-    return Math.max(2, ratingTransferred)
+    return Math.max(1, ratingTransferred)
   },
 
   'Upset elo': function (winnerElo, loserElo) {
@@ -36,6 +36,6 @@ module.exports = calculateFunctions = {
     let diff = loserElo - winnerElo
     let ratingTransferred = Math.round(k - (k)/(1 + t**(diff/a)) + (w * diff**2)/(k))
     
-    return Math.max(2, ratingTransferred)
+    return Math.max(1, ratingTransferred)
   },
 }
