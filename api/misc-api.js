@@ -71,7 +71,7 @@ module.exports = {
     let scores = []
     for (let player in opponentsMatchList) {
       let numbers = opponentsMatchList[player]
-      if (numbers.win + numbers.lose > 3) {
+      if (numbers.win + numbers.lose > 4) {
         let score = this.calculateRivalryScore(numbers.win, numbers.lose)
         scores.push([player, score])
       }
