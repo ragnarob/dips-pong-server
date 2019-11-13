@@ -6,7 +6,7 @@ const officeApi = require('./office-api')
 module.exports = {
   setupRoutes () {
     app.get('/api/games', this.hasOfficeIdInQuery, async (req, res) => {
-      let allGames = await this.getAllGames(req.query.officeId)
+      let allGames = await this.getAllGames(req.query.officeId, 50)
       res.json(allGames)
     })
 
@@ -51,7 +51,7 @@ module.exports = {
     })
   },
 
-  async getAllGames (officeId) {
+  async getAllGames (officeId, limit) {
     let gamesQuery = 'SELECT game.id AS gameId, game.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, game.winnerelo AS winnerElo, game.loserelo AS loserElo, game.winnerelochange AS winnerEloChange, game.loserelochange AS loserEloChange FROM game INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = game.loser) WHERE game.office = ? ORDER BY timestamp DESC'
 
     let crossLeagueGamesQuery = 'SELECT crossleaguegame.id AS gameId, crossleaguegame.timestamp AS timestamp, player.name AS winningPlayer, losingjoin.name AS losingPlayer, crossleaguegame.winneroffice AS winnerOffice, crossleaguegame.loseroffice AS loserOffice, crossleaguegame.winnerelo AS winnerElo, crossleaguegame.loserelo AS loserElo, crossleaguegame.winnerelochange AS winnerEloChange, crossleaguegame.loserelochange AS loserEloChange FROM crossleaguegame INNER JOIN player ON (player.id = winner) INNER JOIN player AS losingjoin ON (losingjoin.id = crossleaguegame.loser) WHERE crossleaguegame.winnerOffice = ? OR crossleaguegame.loserOffice = ? ORDER BY timestamp DESC'
@@ -69,7 +69,9 @@ module.exports = {
 
       games = games.concat(crossLeagueGames)
       games.sort((g1, g2) => g1.timestamp > g2.timestamp ? -1 : 1)
-      games = games.slice(0, 50)
+      if (limit) {
+        games = games.slice(0, limit)
+      }
     }
 
     return games
