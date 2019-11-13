@@ -69,6 +69,7 @@ module.exports = {
 
       games = games.concat(crossLeagueGames)
       games.sort((g1, g2) => g1.timestamp > g2.timestamp ? -1 : 1)
+      games = games.slice(0, 50)
     }
 
     return games
